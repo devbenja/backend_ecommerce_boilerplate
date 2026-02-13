@@ -12,6 +12,17 @@ model User {
   id    Int    @id @default(autoincrement())
   name  String
   email String @unique
-  //ROLES ADMIN USER - ESTA LINEA LA BORRAS LUEGO
+  role Role @default(USER)
+  password String
+  status Boolean @default(true)
+  date_created DateTime @default(now())
+  date_uptated DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  USER
 }
 

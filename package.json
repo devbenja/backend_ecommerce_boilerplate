@@ -1,0 +1,37 @@
+{
+  "name": "backend_ecommerce_boilerplate",
+  "version": "1.0.0",
+  "description": "configuración inicial",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devbenja/backend_ecommerce_boilerplate.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/devbenja/backend_ecommerce_boilerplate/issues"
+  },
+  "homepage": "https://github.com/devbenja/backend_ecommerce_boilerplate#readme",
+  "dependencies": {
+    "@prisma/client": "^7.4.0",
+    "cookie-parser": "^1.4.7",
+    "cookieparser": "^0.1.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.1",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "prisma": "^6.19.2"
+  }
+}

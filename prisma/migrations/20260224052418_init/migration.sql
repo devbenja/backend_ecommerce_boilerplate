@@ -10,7 +10,7 @@ CREATE TABLE "users" (
     "password" TEXT NOT NULL,
     "status" BOOLEAN NOT NULL DEFAULT true,
     "date_created" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "date_uptated" TIMESTAMP(3) NOT NULL,
+    "date_updated" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );

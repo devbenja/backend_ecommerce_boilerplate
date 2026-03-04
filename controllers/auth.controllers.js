@@ -3,6 +3,14 @@ import { validationResult } from 'express-validator';
 import prisma from '../config/database.js';
 import { generateToken } from '../utils/jwt.js';
 
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 24 * 60 * 60 * 1000,
+  path: '/',
+});
+
 export const register = async (req, res) => {
   try {
     // Verificar errores de validación
@@ -15,10 +23,17 @@ export const register = async (req, res) => {
       });
     }
 
-    const { nombre, email, password, rol } = req.body;
+    const { name, email, password, role } = req.body;
 
-    // Verificar si el email ya existe
-    const usuarioExistente = await prisma.usuario.findUnique({
+    if (typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Errores de validación',
+        errors: [{ msg: 'Password debe ser un string', path: 'password' }],
+      });
+    }
+
+    const usuarioExistente = await prisma.user.findUnique({
       where: { email },
     });
 
@@ -30,10 +45,10 @@ export const register = async (req, res) => {
     }
 
     // Validar que el rol sea válido
-    if (rol && !['ADMIN', 'BARBERO'].includes(rol)) {
+    if (role && !['ADMIN', 'USER'].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Rol inválido. Debe ser ADMIN o BARBERO',
+        message: 'Rol inválido. Debe ser ADMIN o USER',
       });
     }
 
@@ -42,20 +57,20 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Crear usuario
-    const nuevoUsuario = await prisma.usuario.create({
+    const nuevoUsuario = await prisma.user.create({
       data: {
-        nombre,
+        name,
         email,
         password: hashedPassword,
-        rol: rol || 'BARBERO', // Por defecto BARBERO si no se especifica
+        role: role || 'USER',
       },
       select: {
         id: true,
-        nombre: true,
+        name: true,
         email: true,
-        rol: true,
-        activo: true,
-        createdAt: true,
+        role: true,
+        status: true,
+        date_created: true,
       },
     });
 
@@ -63,24 +78,16 @@ export const register = async (req, res) => {
     const token = generateToken({
       userId: nuevoUsuario.id,
       email: nuevoUsuario.email,
-      rol: nuevoUsuario.rol,
+      role: nuevoUsuario.role,
     });
 
-    // Configurar cookie con el token
-    const cookieOptions = {
-      httpOnly: true, // Previene acceso desde JavaScript del cliente
-      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-      sameSite: 'strict', // Protección CSRF
-      maxAge: 24 * 60 * 60 * 1000, // 24 horas
-    };
-
-    res.cookie('token', token, cookieOptions);
+    res.cookie('token', token, getCookieOptions());
 
     res.status(201).json({
       success: true,
       message: 'Usuario registrado exitosamente',
       data: {
-        usuario: nuevoUsuario,
+        user: nuevoUsuario,
       },
     });
   } catch (error) {
@@ -107,8 +114,16 @@ export const login = async (req, res) => {
 
     const { email, password } = req.body;
 
+    if (typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Errores de validación',
+        errors: [{ msg: 'Password debe ser un string', path: 'password' }],
+      });
+    }
+
     // Buscar usuario por email
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.user.findUnique({
       where: { email },
     });
 
@@ -119,8 +134,7 @@ export const login = async (req, res) => {
       });
     }
 
-    // Verificar si el usuario está activo
-    if (!usuario.activo) {
+    if (!usuario.status) {
       return res.status(401).json({
         success: false,
         message: 'Usuario inactivo. Contacte al administrador',
@@ -141,28 +155,20 @@ export const login = async (req, res) => {
     const token = generateToken({
       userId: usuario.id,
       email: usuario.email,
-      rol: usuario.rol,
+      role: usuario.role,
     });
 
-    // Configurar cookie con el token
-    const cookieOptions = {
-      httpOnly: true, // Previene acceso desde JavaScript del cliente
-      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-      sameSite: 'strict', // Protección CSRF
-      maxAge: 24 * 60 * 60 * 1000, // 24 horas
-    };
-
-    res.cookie('token', token, cookieOptions);
+    res.cookie('token', token, getCookieOptions());
 
     res.json({
       success: true,
       message: 'Inicio de sesión exitoso',
       data: {
-        usuario: {
+        user: {
           id: usuario.id,
-          nombre: usuario.nombre,
+          name: usuario.name,
           email: usuario.email,
-          rol: usuario.rol,
+          role: usuario.role,
         },
       },
     });
@@ -174,6 +180,18 @@ export const login = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+export const logout = async (req, res) => {
+  res.clearCookie('token', getCookieOptions());
+  res.json({ success: true, message: 'Sesión cerrada' });
+};
+
+export const me = async (req, res) => {
+  res.json({
+    success: true,
+    data: { user: req.user },
+  });
 };
 
 

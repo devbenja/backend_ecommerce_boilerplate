@@ -16,18 +16,18 @@ export const authenticate = async (req, res, next) => {
     const decoded = verifyToken(token);
 
     // Verificar que el usuario existe y está activo
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
-        nombre: true,
+        name: true,
         email: true,
-        rol: true,
-        activo: true,
+        role: true,
+        status: true,
       },
     });
 
-    if (!usuario || !usuario.activo) {
+    if (!usuario || !usuario.status) {
       return res.status(401).json({
         success: false,
         message: 'Usuario no encontrado o inactivo',

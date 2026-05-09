@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -8,53 +9,211 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String   @unique
-  role         Role     @default(USER)
-  password     String
-  status       Boolean  @default(true)
-  date_created DateTime @default(now())
-  date_updated DateTime @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  firstName String   @map("first_name") @db.VarChar(100)
+  lastName  String   @map("last_name") @db.VarChar(100)
+  email     String   @unique @db.VarChar(150)
+  password  String
+  phone     String?  @db.VarChar(20)
+  role      String   @default("customer") @db.VarChar(20)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relaciones
+  carts     Cart[]
+  orders    Order[]
+  wishlist  Wishlist[]
+  addresses Address[]
 
   @@map("users")
 }
- 
+
 model Category {
-  id          Int          @id @default(autoincrement())
-  name        String
-  slug        String       @unique
-  description String?
-  parentId    Int?
-  parent      Category?    @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Category[]   @relation("CategoryToCategory")
-  products    Product[]    @relation("ProductToCategory")
-  status      Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  products    Product[]
 
   @@map("categories")
 }
 
 model Product {
-  id          Int               @id @default(autoincrement())
-  name        String
-  slug        String            @unique
-  description String?
-  price       Decimal           @db.Decimal(10, 2)
-  comparePrice Decimal?
-  sku         String?
-  stock       Int               @default(0)
-  images      String[]
-  status      Boolean           @default(true)
-  categories  Category[]        @relation("ProductToCategory")
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  categoryId  String   @map("category_id") @db.Uuid
+  name        String   @db.VarChar(150)
+  description String   @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  sku         String?  @unique @db.VarChar(100)
+  brand       String?  @db.VarChar(100)
+  gender      String?  @db.VarChar(30)
+  status      String   @default("active") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relaciones
+  category    Category       @relation(fields: [categoryId], references: [id])
+  images      ProductImage[]
+  sizes       ProductSize[]
+  colors      ProductColor[]
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  wishlist    Wishlist[]
 
   @@map("products")
 }
 
-enum Role {
-  ADMIN
-  USER
+model ProductImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  imageUrl  String   @map("image_url") @db.Text
+  isMain    Boolean  @default(false) @map("is_main")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+model ProductSize {
+  id        String @id @default(uuid()) @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  size      String @db.VarChar(20)
+  stock     Int    @default(0)
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_sizes")
+}
+
+model ProductColor {
+  id        String  @id @default(uuid()) @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  colorName String  @map("color_name") @db.VarChar(50)
+  hexCode   String? @map("hex_code") @db.VarChar(10)
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_colors")
+}
+
+model Cart {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  status    String   @default("active") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  cartId    String   @map("cart_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  quantity  Int
+  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("cart_items")
+}
+
+model Order {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  orderNumber  String   @unique @map("order_number") @db.VarChar(50)
+  subtotal     Decimal  @db.Decimal(10, 2)
+  shippingCost Decimal  @default(0) @map("shipping_cost") @db.Decimal(10, 2)
+  total        Decimal  @db.Decimal(10, 2)
+  paymentStatus String  @default("pending") @map("payment_status") @db.VarChar(30)
+  orderStatus  String   @default("processing") @map("order_status") @db.VarChar(30)
+  trackingCode String?  @map("tracking_code") @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  user         User            @relation(fields: [userId], references: [id])
+  items        OrderItem[]
+  payments     Payment[]
+  tracking     OrderTracking[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  orderId   String  @map("order_id") @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id                String    @id @default(uuid()) @db.Uuid
+  orderId           String    @map("order_id") @db.Uuid
+  provider          String    @db.VarChar(50)
+  providerPaymentId String    @map("provider_payment_id") @db.Text
+  amount            Decimal   @db.Decimal(10, 2)
+  currency          String    @default("USD") @db.VarChar(10)
+  paymentStatus     String    @map("payment_status") @db.VarChar(30)
+  paidAt            DateTime? @map("paid_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model OrderTracking {
+  id          String   @id @default(uuid()) @db.Uuid
+  orderId     String   @map("order_id") @db.Uuid
+  status      String   @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_tracking")
+}
+
+model Wishlist {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("wishlist")
+}
+
+model Address {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  country     String   @db.VarChar(100)
+  city        String   @db.VarChar(100)
+  addressLine String   @map("address_line") @db.Text
+  postalCode  String?  @map("postal_code") @db.VarChar(20)
+  reference   String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
 }
